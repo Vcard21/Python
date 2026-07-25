@@ -1,7 +1,24 @@
 import requests
 import json
+import argparse
+# argparse AI代碼如下
+
+# 建立參數解析器
+parser = argparse.ArgumentParser(description="氣象查詢 CLI 工具")
+parser.add_argument("city", help="要查詢的城市名稱")
+parser.add_argument("--unit", choices=["C", "F"], default="C", help="選擇溫度單位：C (攝氏) 或 F (華氏)")
+
+args = parser.parse_args()
+
+# 後續程式碼直接拿來用
+unit_param = "imperial" if args.unit == "F" else "metric"
+print(f"正在查詢 {args.city}，單位：{args.unit}")
+
+
+
 url = "https://api.openweathermap.org/data/2.5/weather"
 weatherAPI_Key = "418456f0ea7dc84fb8fbe38c8c7d35d4"
+
 while True:
     print("welcome to the Weather Checker")
     # input後面加.strip()是因為怕使用者輸入空白導致無法讀取的問題產生，所以很重要！！

@@ -1,0 +1,47 @@
+argparse 說明
+
+2. parser = argparse.ArgumentParser(description="氣象查詢 CLI 工具")
+這行在幹嘛：實例化（建立）一個「參數解析器物件」，並命名為 parser。
+語法結構：
+argparse.ArgumentParser(...)：這是套件裡的核心類別，負責記錄我們接下來設定的所有規則。
+description="..."：設定這個工具的說明文字。當使用者在終端機輸入 python weather.py --help 時，這段文字會顯示在最上方介紹這個程式。
+3. parser.add_argument("city", help="要查詢的城市名稱")
+這行在幹嘛：設定第一個參數「城市名稱」，而且要求一定要輸入。
+語法結構：
+"city"（沒有加 --）：在 argparse 中，字串前面沒有加 -- 代表它是「位置參數（Positional Argument）」。
+規則：必填！ 使用者執行程式時一定要給，且順序固定。
+範例：python weather.py Taipei（Taipei 就會自動丟給 city）。
+help="..."：這個參數的使用說明，會顯示在 --help 選單裡。
+4. parser.add_argument("--unit", choices=["C", "F"], default="C", help="...")
+這行在幹嘛：設定第二個參數「溫度單位」，這個是可選填的選項（Flag），並且限制輸入值。
+語法結構：
+"--unit"（有加 --）：名稱前面加了 -- 代表它是「選項參數（Optional Argument）」。
+規則：選填！ 使用者沒填程式也不會崩潰。
+choices=["C", "F"]：白名單限制。只允許傳入 "C" 或 "F"，如果使用者亂填 python weather.py Taipei --unit X，argparse 會直接擋下並噴錯警告，不用你自己寫 if-else 去過濾！
+default="C"：預設值。如果使用者執行時沒有帶 --unit，unit 的數值會自動補上 "C"。
+5. args = parser.parse_args()
+這行在幹嘛：正式發動解析指令！
+語法結構：
+它會去抓取使用者在終端機輸入的所有文字（如 sys.argv），拿去跟我們上面用 add_argument 定義好的規則做比對。
+拆解完成後，它會打包成一個名為 args 的變數物件。
+存取方式：原本定義的 "--unit"，在 args 物件裡面會自動把前面的 -- 拿掉，變成 args.unit 和 args.city 讓你存取。
+6. unit_param = "imperial" if args.unit == "F" else "metric"
+這行在幹嘛：把使用者選的 C 或 F，翻譯成 OpenWeather API 認識的 metric 或 imperial。
+語法結構（Python 三元運算子 / Ternary Operator）：
+語法公式：[結果 A] if [條件] else [結果 B]
+翻譯：如果 args.unit == "F" 成立，unit_param 就是 "imperial"；否則就是 "metric"。
+這等同於下面這四行程式碼的簡寫，是非常道地（Pythonic）的簡潔寫法：
+Python
+if args.unit == "F":
+    unit_param = "imperial"
+else:
+    unit_param = "metric"
+7. print(f"正在查詢 {args.city}，單位：{args.unit}")
+這行在幹嘛：把解析出來的結果印出來驗證。
+語法結構：f"..." 是 Python 的 f-string（字串插值），用 {} 把變數包起來直接嵌入字串中顯示。
+語法核心規則總結
+為什麼語法長這樣？背後有這幾個固定的語法規律：
+無 -- 代表必填（位置參數） ➔ add_argument("city")
+有 -- 代表選填（旗標參數） ➔ add_argument("--unit")
+安全防禦機制交給套件 ➔ choices=[...] 自動檢驗輸入；default=... 自動提供預設值。
+解析結果用點號 .  讀取 ➔ args.city 與 args.unit。
