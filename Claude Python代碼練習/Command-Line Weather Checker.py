@@ -1,20 +1,12 @@
 import requests
+from colorama import Fore, Style, init
 import json
 import argparse
-# argparse AI代碼如下
 
-# 建立參數解析器
-parser = argparse.ArgumentParser(description="氣象查詢 CLI 工具")
-parser.add_argument("city", help="要查詢的城市名稱")
-parser.add_argument("--unit", choices=["C", "F"], default="C", help="選擇溫度單位：C (攝氏) 或 F (華氏)")
-
-args = parser.parse_args()
-
-# 後續程式碼直接拿來用
-unit_param = "imperial" if args.unit == "F" else "metric"
-print(f"正在查詢 {args.city}，單位：{args.unit}")
-
-
+# colorama AI 代碼如下：
+# 關鍵第一步：初始化！
+# 加上 autoreset=True 後，每次 print 完顏色會自動變回預設白色，不會染到下一行！
+init(autoreset=True)
 
 url = "https://api.openweathermap.org/data/2.5/weather"
 weatherAPI_Key = "418456f0ea7dc84fb8fbe38c8c7d35d4"
@@ -50,13 +42,13 @@ while True:
 
         if response.status_code == 200:
             data = response.json()
-            print(f"查詢成功")
+            print(Fore.GREEN + "查詢成功")
         else:
-            print(f"查詢失敗，錯誤代碼：{response.status_code}")
+            print(Fore.RED + "查詢失敗，錯誤代碼：{response.status_code}")
 
     except requests.exceptions.RequestException as e:
         # 捕捉所有與網路請求相關的錯誤（如斷網、連線逾時）
-        print(f"📡 網路連線發生問題，請檢查網路狀態或 API 網址：{e}")
+        print(Fore.YELLOW + "📡 網路連線發生問題，請檢查網路狀態或 API 網址：{e}")
 
     # ！！！！！！以下為ai解答如何把回傳的json內容給翻譯成能夠看得懂的樣子！！！！！！
     if response.status_code == 200:
@@ -72,11 +64,23 @@ while True:
         # 3. 抓取天氣描述（進入 weather 列表的第一項 [0]，再拿到 description）
         description = data['weather'][0]['description']
         # 排版成使用者看得懂的中文句子
-        print(f"📍 城市：{city}")
-        print(f"🌤️ 天氣狀況：{description}")
-        print(f"🌡️ 當前氣溫：{temp}°C（體感溫度：{feels_like}°C")
+        print(Style.BRIGHT + "📍 城市：{city}")
+        print(Style.BRIGHT + "🌤️ 天氣狀況：{description}")
+        print(Style.BRIGHT + "🌡️ 當前氣溫：{temp}°C（體感溫度：{feels_like}°C")
     elif response.status_code == 401:
-        print("API Key error,please contact developer")
+        print(Fore.YELLOW + "API Key error,please contact developer")
     elif response.status_code == 404:
-        print("no city found,please try again")
+        print(Fore.RED +"no city found,please try again")
+
+# argparse AI代碼如下
+
+# 建立參數解析器
+parser = argparse.ArgumentParser(description="氣象查詢 CLI 工具")
+parser.add_argument("city", help="要查詢的城市名稱")
+parser.add_argument("--unit", choices=["C", "F"], default="C", help="選擇溫度單位：C (攝氏) 或 F (華氏)")
+
+args = parser.parse_args()
+# 後續程式碼直接拿來用
+unit_param = "imperial" if args.unit == "F" else "metric"
+print(f"正在查詢 {args.city}，單位：{args.unit}")
 
