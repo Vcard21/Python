@@ -44,7 +44,7 @@ while True:
             data = response.json()
             print(Fore.GREEN + "查詢成功")
         else:
-            print(Fore.RED + "查詢失敗，錯誤代碼：{response.status_code}")
+            print(Fore.RED + f"查詢失敗，錯誤代碼：{response.status_code}")
 
     except requests.exceptions.RequestException as e:
         # 捕捉所有與網路請求相關的錯誤（如斷網、連線逾時）
@@ -64,16 +64,19 @@ while True:
         # 3. 抓取天氣描述（進入 weather 列表的第一項 [0]，再拿到 description）
         description = data['weather'][0]['description']
         # 排版成使用者看得懂的中文句子
-        print(Style.BRIGHT + "📍 城市：{city}")
-        print(Style.BRIGHT + "🌤️ 天氣狀況：{description}")
-        print(Style.BRIGHT + "🌡️ 當前氣溫：{temp}°C（體感溫度：{feels_like}°C")
+        print(Style.BRIGHT + f"📍 城市：{city}")
+        print(Style.BRIGHT + f"🌤️ 天氣狀況：{description}")
+        print(Style.BRIGHT + f"🌡️ 當前氣溫：{temp}°C（體感溫度：{feels_like}°C")
     elif response.status_code == 401:
         print(Fore.YELLOW + "API Key error,please contact developer")
     elif response.status_code == 404:
         print(Fore.RED +"no city found,please try again")
 
-# argparse AI代碼如下
 
+        with open("histroy.txt", "a",encoding="utf-8") as f:
+            f.write(f"search history for {city_name}\n,{description}\n,{temp}\n,{feels_like}\n")
+
+# argparse AI代碼如下
 # 建立參數解析器
 parser = argparse.ArgumentParser(description="氣象查詢 CLI 工具")
 parser.add_argument("city", help="要查詢的城市名稱")
@@ -83,4 +86,5 @@ args = parser.parse_args()
 # 後續程式碼直接拿來用
 unit_param = "imperial" if args.unit == "F" else "metric"
 print(f"正在查詢 {args.city}，單位：{args.unit}")
+
 
