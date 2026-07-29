@@ -17,3 +17,7 @@ search history for dfdf
 ,晴
 ,76.37
 ,77.85
+search history for tokyo
+,阴，多云
+,85.55
+,88.65
