@@ -20,6 +20,15 @@ directory.execute(
     )
 """
 )
+"""
+Issue：How to determine whether baseline has been initialized
+
+原設計：透過第一筆資料是否存在判斷baseline是否建立。
+
+問題：若監控目錄本身為空，baseline可以合理地包含0 rows，因此「0 rows」無法區分「尚未初始化」與「已初始化但baseline為空」。
+
+TODO：研究SQLite中更適合保存／判斷baseline initialization state的方法。
+"""
 baseline = True
 for file in file_location.rglob("*.py"):
     # Path的功能rglob去遍歷那個路徑的某一檔案，遍歷什麼檔案用（）內指定
