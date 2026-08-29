@@ -21,7 +21,7 @@ directory.execute(
 )
 
 """
-Issue：How to determine whether baseline has been initialized !SOloved!
+Issue：How to determine whether baseline has been initialized !Solved!
 
 原設計：透過第一筆資料是否存在判斷baseline是否建立。
 
@@ -32,13 +32,13 @@ TODO：研究SQLite中更適合保存／判斷baseline initialization state的�
 Update：Using fetchone tool return VALUES to determine already build baseline or not
 """
 directory.row_factory = sqlite3.Row
-# core setting to control waht data will return by databese(SQlite3)
+# core setting to control what data will return by database(sqlite3)
 directory.execute("SELECT Old hash FROM WatchDog")
 # select Old hash and use by baseline,so baseline use fetchone tool to check data are None or not
 baseline = directory.fetchone()
 # determine baseline is None or not
 New_hash = []
-# add a dict that current status could be add into
+# add a dict that current status could add into
 if baseline is None:
     # add baseline
     for file in file_location.rglob("*.py"):
@@ -63,8 +63,27 @@ else:
     # add current status of hash to compare baseline
     directory.execute("SELECT Path,Old hash FROM WatchDog")
     # select Path and Old hash
-    compare_status_new = {row["Path"]:row["Old hash"] for row in directory.fetchall()}
+    Old_hash = {row["Path"]: row["Old hash"] for row in directory.fetchall()}
     # after select Path and Old hash,storage database values as dict,then two dict should be comparable
+
+    if New_hash[file] == Old_hash[Path]:
+        # 如果沒變
+        if New_hash[hash_num] == Old_hash["Old hash"]:
+            # 再度判斷hash是否有變
+            print("Unchange")
+        else:
+            directory.execute(
+                "UPDATE WatchDog SET Old hash = ?",New_hash[Path] )
+            print("Change")
+        # if old hash aren't = New hash,then output Change and Update to database
+    else: # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
+        if  New_hash[file] is None: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
+            directory.execute("INSERT INTO WatchDog(Path,Old_hash) VALUES (?,?)", New_hash)
+        else:
+            print("Change")
+            directory.execute("UPDATE WatchDog SET Old hash = ? WHERE Path = ?", (New_hash[hash_num], Path))
+        # 沒有baseline有新path，增加
+
 
     # 以下暫時不會用到
     # with open('data list.txt','rb') as f:
