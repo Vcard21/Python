@@ -1,4 +1,5 @@
 import hashlib
+import pathlib
 from pathlib import Path
 import sqlite3
 
@@ -75,16 +76,17 @@ else:
             directory.execute(
                 "UPDATE WatchDog SET Old hash = ?",New_hash[Path] )
             print("Change")
-        # if old hash aren't = New hash,then output Change and Update to database
     else: # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
         if  New_hash[file] is None: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
-            directory.execute("INSERT INTO WatchDog(Path,Old_hash) VALUES (?,?)", New_hash)
+            print(f"The file{Old_hash["Path"]} has been Deleted")
+        # path不等於空時，代表路徑不同，所以代表新增
         else:
-            print("Change")
-            directory.execute("UPDATE WatchDog SET Old hash = ? WHERE Path = ?", (New_hash[hash_num], Path))
-        # 沒有baseline有新path，增加
-
-
+            directory.execute("INSERT INTO WatchDog(Path,Old_hash) VALUES (?,?)", New_hash)
+            print(f"Found new file{New_hash[file]} that wasn't exist before.(Update to Database)")
+            """
+            TODO:
+            add Not Null for database to make sure None value are truly null
+            """
     # 以下暫時不會用到
     # with open('data list.txt','rb') as f:
     #     content = f.readlines()
