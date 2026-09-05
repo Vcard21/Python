@@ -10,15 +10,15 @@ database = sqlite3.connect('WatchDog.db')
 # 建立檔案並連接至資料庫
 directory = database.cursor()
 # 建立游標
+# 建立內部資料表
 directory.execute(
-    # 建立內部資料表
     """
-    CREATE TABLE IF NOT EXISTS WatchDog
-    (id INTEGER primary key auto_increment,
-     Path TEXT NOT NULL,
-     Old hash TEXT NOT NULL,
+    CREATE TABLE IF NOT EXISTS WatchDog (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    Path TEXT NOT NULL,
+    Oldhash TEXT NOT NULL
     )
-    """
+"""
 )
 
 """
@@ -36,12 +36,15 @@ Update：Using fetchone tool return VALUES to determine already build baseline o
 """
 directory.row_factory = sqlite3.Row
 # core setting to control what data will return by database(sqlite3)
-directory.execute("SELECT Old hash FROM WatchDog")
+directory.execute("SELECT Oldhash FROM WatchDog")
 # select Old hash and use by baseline,so baseline use fetchone tool to check data are None or not
 baseline = directory.fetchone()
 # determine baseline is None or not
 New_hash = []
 # add a dict that current status could add into
+directory.execute("SELECT * FROM WatchDog")
+dormant = directory.fetchall()
+print(dormant)
 if baseline is None:
     # add baseline
     for file in file_location.rglob("*.py"):
@@ -50,7 +53,7 @@ if baseline is None:
         # 抓到的檔案py檔案讀取後用bytes的方式呈現
         hash_num = hashlib.sha256(file_bytes).hexdigest()
         # 把用bytes方式呈現的file_bytes加上sha256雜湊值，雜湊值用64個十六位進制表示
-        directory.execute('INSERT INTO WatchDog(Old hash, Path) VALUES (?,?)', (hash_num, file))
+        directory.execute("INSERT INTO WatchDog(Oldhash, Path) VALUES (?,?)", (hash_num, file))
         # 建立第一批資料baseline
         print("beseline are now created")
         database.commit()
@@ -60,7 +63,7 @@ else:
     for file in file_location.rglob("*"):
         if not file.is_file():
             continue
-            """
+        """
             TODO:
                 rglob all file but not include Path itself
             Solvation1:
@@ -73,19 +76,19 @@ else:
                 using tool Path.resolve()
                 這個工具可以把Path轉成解析後的絕對路徑
                 konwn by AI
-            """
+        """
         # 用resolve功能判定絕對路徑，如果這個路徑跟database存著的Watch dog db黨相同
         # 那就中斷這一次的資料輸入，進入下一個循環
-        if database == file.path.resolve('python')
+        if database == file.path.resolve('python'):
             continue
-            # Path的功能rglob去遍歷那個路徑的某一檔案，遍歷什麼檔案用（）內指定
-            file_bytes = file.read_bytes()
-            # 抓到的檔案py檔案讀取後用bytes的方式呈現
-            hash_num = hashlib.sha256(file_bytes).hexdigest()
-            # 把用bytes方式呈現的file_bytes加上sha256雜湊值，雜湊值用64個十六位進制表示
-            New_hash[file] = hash_num
-        # add current status of hash to compare baseline
-        directory.execute("SELECT Path,Old hash FROM WatchDog")
+        #      Path的功能rglob去遍歷那個路徑的某一檔案，遍歷什麼檔案用（）內指定
+        file_bytes = file.read_bytes()
+        #     # 抓到的檔案py檔案讀取後用bytes的方式呈現
+        hash_num = hashlib.sha256(file_bytes).hexdigest()
+        #     # 把用bytes方式呈現的file_bytes加上sha256雜湊值，雜湊值用64個十六位進制表示
+        New_hash[file] = hash_num
+        # # add current status of hash to compare baseline
+        directory.execute("SELECT Path,Oldhash FROM WatchDog")
         # select Path and Old hash
         Old_hash = {row["Path"]: row["Old hash"] for row in directory.fetchall()}
         # after select Path and Old hash,storage database values as dict,then two dict should be comparable
@@ -97,14 +100,14 @@ else:
                 print("Unchange")
             else:
                 directory.execute(
-                    "UPDATE WatchDog SET Old hash = ?",New_hash[Path] )
+                    "UPDATE WatchDog SET Oldhash = ?",New_hash[Path] )
                 print("Change")
         else: # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
             if  New_hash[file] is None: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
                 print(f"The file{Old_hash["Path"]} has been Deleted")
             # path不等於空時，代表路徑不同，所以代表新增
             else:
-                directory.execute("INSERT INTO WatchDog(Path,Old_hash) VALUES (?,?)", New_hash)
+                directory.execute("INSERT INTO WatchDog(Path,Oldhash) VALUES (?,?)", New_hash)
                 print(f"Found new file{New_hash[file]} that wasn't exist before.(Add to Database)")
                 """
                 TODO:
