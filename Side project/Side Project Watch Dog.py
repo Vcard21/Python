@@ -5,7 +5,7 @@ import sqlite3
 
 # Phase 1
 # import Path and hashlib to connect and give sha256 value
-file_location = Path(r"C:\Users\\Desktop\python-training")
+file_location = Path(r"C:\Users\Desktop\python-training")
 database = sqlite3.connect('WatchDog.db')
 # 建立檔案並連接至資料庫
 directory = database.cursor()
@@ -40,15 +40,13 @@ directory.execute("SELECT Oldhash FROM WatchDog")
 # select Old hash and use by baseline,so baseline use fetchone tool to check data are None or not
 baseline = directory.fetchone()
 # determine baseline is None or not
-New_hash = []
+New_hash = {}
 # add a dict that current status could add into
-directory.execute("SELECT * FROM WatchDog")
-dormant = directory.fetchall()
-print(dormant)
 if baseline is None:
     # add baseline
-    for file in file_location.rglob("*.py"):
+    for file in file_location.rglob("*.*"):
         # Path的功能rglob去遍歷那個路徑的某一檔案，遍歷什麼檔案用（）內指定
+        print(f"file has been found{file}")
         file_bytes = file.read_bytes()
         # 抓到的檔案py檔案讀取後用bytes的方式呈現
         hash_num = hashlib.sha256(file_bytes).hexdigest()
@@ -79,7 +77,7 @@ else:
         """
         # 用resolve功能判定絕對路徑，如果這個路徑跟database存著的Watch dog db黨相同
         # 那就中斷這一次的資料輸入，進入下一個循環
-        if database == file.path.resolve('python'):
+        if database == file.name("WatchDog"):
             continue
         #      Path的功能rglob去遍歷那個路徑的某一檔案，遍歷什麼檔案用（）內指定
         file_bytes = file.read_bytes()
@@ -90,7 +88,7 @@ else:
         # # add current status of hash to compare baseline
         directory.execute("SELECT Path,Oldhash FROM WatchDog")
         # select Path and Old hash
-        Old_hash = {row["Path"]: row["Old hash"] for row in directory.fetchall()}
+        Old_hash = {row["Path"]: row["Oldhash"] for row in directory.fetchall()}
         # after select Path and Old hash,storage database values as dict,then two dict should be comparable
 
         if New_hash[file] == Old_hash[Path]:
@@ -100,7 +98,7 @@ else:
                 print("Unchange")
             else:
                 directory.execute(
-                    "UPDATE WatchDog SET Oldhash = ?",New_hash[Path] )
+                    "UPDATE WatchDog SET Oldhash = ?,WHERE Path = ?",New_hash[Path],New_hash[file])
                 print("Change")
         else: # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
             if  New_hash[file] is None: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
