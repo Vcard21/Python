@@ -1,7 +1,7 @@
 import hashlib
-import pathlib
 from pathlib import Path
 import sqlite3
+from sys import path_hooks
 
 # Phase 1
 # import Path and hashlib to connect and give sha256 value
@@ -51,7 +51,7 @@ if baseline is None:
         # 抓到的檔案py檔案讀取後用bytes的方式呈現
         hash_num = hashlib.sha256(file_bytes).hexdigest()
         # 把用bytes方式呈現的file_bytes加上sha256雜湊值，雜湊值用64個十六位進制表示
-        directory.execute("INSERT INTO WatchDog(Oldhash, Path) VALUES (?,?)", (hash_num, file))
+        directory.execute("INSERT INTO WatchDog(Oldhash, path_location) VALUES (?,?)", (hash_num, file))
         # 建立第一批資料baseline
         print("beseline are now created")
         database.commit()
@@ -75,25 +75,35 @@ else:
                 這個工具可以把Path轉成解析後的絕對路徑
                 konwn by AI
         """
-        # 用resolve功能判定絕對路徑，如果這個路徑跟database存著的Watch dog db黨相同
+        # 用resolve功能判定絕對路徑，如果這個路徑跟database存著的Watch dog db相同
         # 那就中斷這一次的資料輸入，進入下一個循環
-        if database == file.name("WatchDog"):
+        # 用location儲存file的檔案路徑，使用Path.resolve這個功能去把路徑轉成絕對路徑
+        location = str(Path.resolve(file))
+        """
+        為什麼要轉成絕對路徑？
+        1.避免因執行地點不同而報錯
+        2.解決多模組呼叫的衝突
+        3.消除符號連結（Symlink）與相對符號
+        4.提高安全性
+        以上為AI解答
+        """
+        if file_location == location:
             continue
         #      Path的功能rglob去遍歷那個路徑的某一檔案，遍歷什麼檔案用（）內指定
         file_bytes = file.read_bytes()
         #     # 抓到的檔案py檔案讀取後用bytes的方式呈現
         hash_num = hashlib.sha256(file_bytes).hexdigest()
         #     # 把用bytes方式呈現的file_bytes加上sha256雜湊值，雜湊值用64個十六位進制表示
-        New_hash[file] = hash_num
-        # # add current status of hash to compare baseline
+        New_hash[hash] = hash_num
+        # add current status of hash to compare baseline
         directory.execute("SELECT Path,Oldhash FROM WatchDog")
         # select Path and Old hash
         Old_hash = {row["Path"]: row["Oldhash"] for row in directory.fetchall()}
         # after select Path and Old hash,storage database values as dict,then two dict should be comparable
 
-        if New_hash[file] == Old_hash[Path]:
+        if New_hash[file] in Old_hash[Path]:
             # 如果沒變
-            if New_hash[hash_num] == Old_hash["Old hash"]:
+            if New_hash.get("hash_num") == Old_hash["Oldhash"]:
                 # 再度判斷hash是否有變
                 print("Unchange")
             else:
