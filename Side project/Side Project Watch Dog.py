@@ -98,12 +98,12 @@ else:
         # add current status of hash to compare baseline
         directory.execute("SELECT Path,Oldhash FROM WatchDog")
         # select Path and Old hash
-        Old_hash = {row["Path"]: row["Oldhash"] for row in directory.fetchall()}
+        Old_hash = {row["Path"]: row["Old_hash_baseline"] for row in directory.fetchall()}
         # after select Path and Old hash,storage database values as dict,then two dict should be comparable
 
         if New_hash[file] in Old_hash[Path]:
             # 如果沒變
-            if New_hash.get("hash_num") == Old_hash["Oldhash"]:
+            if New_hash == Old_hash:
                 # 再度判斷hash是否有變
                 print("Unchange")
             else:
@@ -111,7 +111,7 @@ else:
                     "UPDATE WatchDog SET Oldhash = ?,WHERE Path = ?",New_hash[Path],New_hash[file])
                 print("Change")
         else: # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
-            if  New_hash[file] is None: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
+            if  Old_hash[Path] not in New_hash[file]: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
                 print(f"The file{Old_hash["Path"]} has been Deleted")
             # path不等於空時，代表路徑不同，所以代表新增
             else:
