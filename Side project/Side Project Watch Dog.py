@@ -1,11 +1,10 @@
 import hashlib
 from pathlib import Path
 import sqlite3
-from sys import path_hooks
 
 # Phase 1
 # import Path and hashlib to connect and give sha256 value
-file_location = Path(r"C:\Users\Desktop\python-training")
+file_location = Path(r"C:\Python\Python")
 database = sqlite3.connect('WatchDog.db')
 # 建立檔案並連接至資料庫
 directory = database.cursor()
@@ -15,7 +14,7 @@ directory.execute(
     """
     CREATE TABLE IF NOT EXISTS WatchDog (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    Path TEXT NOT NULL,
+    path_location TEXT NOT NULL,
     Oldhash TEXT NOT NULL
     )
 """
@@ -51,9 +50,8 @@ if baseline is None:
         # 抓到的檔案py檔案讀取後用bytes的方式呈現
         hash_num = hashlib.sha256(file_bytes).hexdigest()
         # 把用bytes方式呈現的file_bytes加上sha256雜湊值，雜湊值用64個十六位進制表示
-        directory.execute("INSERT INTO WatchDog(Oldhash, path_location) VALUES (?,?)", (hash_num, file))
+        directory.execute("INSERT INTO WatchDog(Oldhash, path_location) VALUES (?,?)", (hash_num, str(file)))
         # 建立第一批資料baseline
-        print("beseline are now created")
         database.commit()
     database.close()
 else:
@@ -94,25 +92,25 @@ else:
         #     # 抓到的檔案py檔案讀取後用bytes的方式呈現
         hash_num = hashlib.sha256(file_bytes).hexdigest()
         #     # 把用bytes方式呈現的file_bytes加上sha256雜湊值，雜湊值用64個十六位進制表示
-        New_hash[hash] = hash_num
+        New_hash[file]=hash_num
         # add current status of hash to compare baseline
-        directory.execute("SELECT Path,Oldhash FROM WatchDog")
+        directory.execute("SELECT path_location,Oldhash FROM WatchDog")
         # select Path and Old hash
-        Old_hash = {row["Path"]: row["Old_hash_baseline"] for row in directory.fetchall()}
+        Old_hash = {row["path_location"]: row["Oldhash"] for row in directory.fetchall()}
         # after select Path and Old hash,storage database values as dict,then two dict should be comparable
-
-        if New_hash[file] in Old_hash[Path]:
+        print("check point")
+        if str(file) in Old_hash:
             # 如果沒變
-            if New_hash == Old_hash:
+            if New_hash[file] == Old_hash[str(file)]:
                 # 再度判斷hash是否有變
                 print("Unchange")
             else:
                 directory.execute(
-                    "UPDATE WatchDog SET Oldhash = ?,WHERE Path = ?",New_hash[Path],New_hash[file])
+                    "UPDATE WatchDog SET Oldhash = ?",New_hash[hash_num])
                 print("Change")
         else: # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
-            if  Old_hash[Path] not in New_hash[file]: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
-                print(f"The file{Old_hash["Path"]} has been Deleted")
+            if  Old_hash[str(file)] not in New_hash[file]: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
+                print(f"The file has been Deleted")
             # path不等於空時，代表路徑不同，所以代表新增
             else:
                 directory.execute("INSERT INTO WatchDog(Path,Oldhash) VALUES (?,?)", New_hash)
