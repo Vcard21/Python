@@ -46,7 +46,6 @@ while True:
     try:
         response = requests.get(url_current, params=params, timeout=5)  # 設定 5 秒逾時
         if response.status_code == 200:
-            # ！！！！！！以下為ai解答如何把回傳的json內容給翻譯成能夠看得懂的樣子！！！！！！
             data = response.json()
             print(Fore.GREEN + "查詢成功")
             # 假設response是我發送request.get的結果
@@ -59,14 +58,13 @@ while True:
             # 3. 抓取天氣描述（進入 weather 列表的第一項 [0]，再拿到 description）
             description = data['weather'][0]['description']
             # 排版成使用者看得懂的中文句子
-            print(Style.BRIGHT + f"📍 城市：{city}\n")
-            print(Style.BRIGHT + f"🌤️ 天氣狀況：{description}\n")
-            print(Style.BRIGHT + f"🌡️ 當前氣溫：{temp}{unit_symbol}\n（體感溫度：{feels_like}{unit_symbol}\n")
+            print(Style.BRIGHT + f"城市：{city}\n")
+            print(Style.BRIGHT + f"天氣狀況：{description}\n")
+            print(Style.BRIGHT + f"當前氣溫：{temp}{unit_symbol}\n（體感溫度：{feels_like}{unit_symbol}\n")
             with open("history.txt", "a", encoding="utf-8") as f:
                 f.write(f"search history for {city_name}\n,{description}\n,{temp}\n,{feels_like}\n")
-            print(Fore.CYAN + "\n📅 讀取未來三天預報中...")
+            print(Fore.CYAN + "\n讀取未來三天預報中...")
 
-            # AI代碼:如何把未來三天預報功能拆解並實現出來
             # 使用原本設定好的 params，但是網址換成預報專用的 URL
             forecast_response = requests.get(url_forecast, params=params, timeout=5)
 

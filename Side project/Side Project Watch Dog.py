@@ -98,30 +98,43 @@ else:
         # select Path and Old hash
         Old_hash = {row["Path_location"]: row["Oldhash"] for row in directory.fetchall()}
         # after select Path and Old hash,storage database values as dict,then two dict should be comparable
+        #
+        # if str(file) in Old_hash:
+        #     # 如果沒變
+        #     if New_hash[file] == Old_hash[str(file)]:
+        #         # 再度判斷hash是否有變
+        #         print("Unchange")
+        #     else:
+        #         directory.execute(
+        #             "UPDATE WatchDog SET Oldhash = ? WHERE Path_location = ?", (New_hash[file],str(file))
+        #         )
+        #         print("Change")
+        # else:
+        #     # else:
+        #     """
+        #     錯誤，原來的if else就是再講file是否有在舊hash中，那else就只會有file不存在舊hash的可能性。
+        #     所以我不應該繼續加deleted的判斷，只會有新增的判斷。
+        #     deleted是原本有但現在沒有的判斷，從一開始有這件事就不應該存在於第一個else的判斷上。
+        #     """
+        #     directory.execute("INSERT INTO WatchDog(Path_location,Oldhash) VALUES (?,?)",(str(file),New_hash[file]))
+        #     print(f"Found new file{New_hash[file]} that wasn't exist before.(Add to Database)")
+        #     """
+        #     todo:
+        #     add Not Null for database to make sure None value are truly null
+        #     -Solved
+        #     """
+        Deleted_key = Old_hash.keys() - New_hash.keys()
+        database.commit()
 
-        if str(file) in Old_hash:
-            # 如果沒變
-            if New_hash[file] == Old_hash[str(file)]:
-                # 再度判斷hash是否有變
-                print("Unchange")
-            else:
-                directory.execute(
-                    "UPDATE WatchDog SET Oldhash = ?",New_hash[file])
-                print("Change")
-        else: # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
-            if  Old_hash[str(file)] not in New_hash[file]: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
-                print(f"The file{Old_hash} has been Deleted")
-            # path不等於空時，代表路徑不同，所以代表新增
-            else:
-                directory.execute("INSERT INTO WatchDog(Path_location,Oldhash) VALUES (?,?)", New_hash)
-                print(f"Found new file{New_hash[file]} that wasn't exist before.(Add to Database)")
-                """
-                TODO:
-                add Not Null for database to make sure None value are truly null
+if not Deleted_key:
+    print("No file got Deleted")
+else:
+    print("file has been Deleted")
+            #這邊要是deleted的判斷，既然路徑存不存在舊hash的判斷已經在上面，那只能另開刪除的判斷
+            # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
+            # if  str(file) not in New_hash: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
+            #     print(f"The file has been Deleted")
 
-                -Solved
-                """
-                database.commit()
     database.close()
 # 以下暫時不會用到
 # with open('data list.txt','rb') as f:

@@ -17,7 +17,7 @@ else:
 try:
     target_host =socket.gethostbyname(https)
     print(Style.BRIGHT + Fore.GREEN + f"url = {https}")
-    for s in range(1,200):
+    for s in range(50,100):
         netport = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         netport.settimeout(0.2)
         result = netport.connect_ex((target_host, s))
