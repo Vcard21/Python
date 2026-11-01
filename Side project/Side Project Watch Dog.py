@@ -3,8 +3,9 @@ from pathlib import Path
 import sqlite3
 # Phase 1
 # import Path and hashlib to connect and give sha256 value
-file_location = Path(r"C:\Python\Python")
-database = sqlite3.connect('WatchDog.db')
+file_location = Path(r"C:\Python\Python\Side project")
+database_path = Path("WatchDog.db").resolve()
+database = sqlite3.connect(database_path)
 # 建立檔案並連接至資料庫
 directory = database.cursor()
 # 建立游標
@@ -30,7 +31,8 @@ TODO：研究SQLite中更適合保存／判斷baseline initialization state的�
 
 Update：Using fetchone tool return VALUES to determine already build baseline or not
 
--Solved
+Update2：fetchone 無法判斷空資料中新增的檔案是否是本來就有還是惡意放出，需用其他方式
+
 """
 directory.row_factory = sqlite3.Row
 # core setting to control what data will return by database(sqlite3)
@@ -40,20 +42,25 @@ baseline = directory.fetchone()
 # determine baseline is None or not
 New_hash = {}
 # add a dict that current status could add into
+
 if baseline is None:
     # add baseline
     for file in file_location.rglob("*"):
+        if file.resolve() == database_path: # 為什麼還要再寫一次在原本的呢?因為尚未建立新DB時，也有可能把自己寫進baseline，第二次才排除變成刪除
+            continue
+        if not file.is_file():
+            continue
+        # 這邊再寫一次是為了防止rglob讀取所有檔案時，把資料夾也當成普通檔案，而else中的這次是為了防止非檔案的物件也被讀取
         # Path的功能rglob去遍歷那個路徑的某一檔案，遍歷什麼檔案用（）內指定
         print(f"file has been found{file}")
         file_bytes = file.read_bytes()
         # 抓到的檔案py檔案讀取後用bytes的方式呈現
         hash_num = hashlib.sha256(file_bytes).hexdigest()
         # 把用bytes方式呈現的file_bytes加上sha256雜湊值，雜湊值用64個十六位進制表示
-        directory.execute("INSERT INTO WatchDog(Oldhash, Path_location) VALUES (?,?)", (hash_num, file))
+        directory.execute("INSERT INTO WatchDog(Oldhash, Path_location) VALUES (?,?)", (hash_num, str(file)))
         # 建立第一批資料baseline
         print("beseline are now created")
         database.commit()
-    database.close()
 else:
     # if baseline already EXISTS,then rglob all the file again to compare the hash_num has change or not
     for file in file_location.rglob("*"):
@@ -73,10 +80,7 @@ else:
                 這個工具可以把Path轉成解析後的絕對路徑
                 konwn by AI
         """
-        # 用resolve功能判定絕對路徑，如果這個路徑跟database存著的Watch dog db相同
-        # 那就中斷這一次的資料輸入，進入下一個循環
-        # 用location儲存file的檔案路徑，使用Path.resolve這個功能去把路徑轉成絕對路徑
-        location = str(Path.resolve(file))
+
         """
         為什麼要轉成絕對路徑？
         1.避免因執行地點不同而報錯
@@ -85,19 +89,14 @@ else:
         4.提高安全性
         以上為AI解答
         """
-        if file_location == location:
+        if file.resolve() == database_path:
             continue
-        #      Path的功能rglob去遍歷那個路徑的某一檔案，遍歷什麼檔案用（）內指定
         file_bytes = file.read_bytes()
         #     # 抓到的檔案py檔案讀取後用bytes的方式呈現
         hash_num = hashlib.sha256(file_bytes).hexdigest()
         #     # 把用bytes方式呈現的file_bytes加上sha256雜湊值，雜湊值用64個十六位進制表示
-        New_hash[file] = hash_num
+        New_hash[str(file)] = hash_num # 這邊要改是因為之前New_hash是path物件，為了要跟Old_hash作對比，轉成同樣的str，才能做對比
         # add current status of hash to compare baseline
-        directory.execute("SELECT Path_location,Oldhash FROM WatchDog")
-        # select Path and Old hash
-        Old_hash = {row["Path_location"]: row["Oldhash"] for row in directory.fetchall()}
-        # after select Path and Old hash,storage database values as dict,then two dict should be comparable
         #
         # if str(file) in Old_hash:
         #     # 如果沒變
@@ -106,8 +105,8 @@ else:
         #         print("Unchange")
         #     else:
         #         directory.execute(
-        #             "UPDATE WatchDog SET Oldhash = ? WHERE Path_location = ?", (New_hash[file],str(file))
-        #         )
+        #                      "UPDATE WatchDog SET Oldhash = ? WHERE Path_location = ?", (New_hash[file],str(file))
+        #                  )
         #         print("Change")
         # else:
         #     # else:
@@ -123,19 +122,63 @@ else:
         #     add Not Null for database to make sure None value are truly null
         #     -Solved
         #     """
-        Deleted_key = Old_hash.keys() - New_hash.keys()
-        database.commit()
+"""
+錯誤示範：
+      
+# 用resolve功能判定絕對路徑，如果這個路徑跟database存著的Watch dog db相同
+# 那就中斷這一次的資料輸入，進入下一個循環
+# 用location儲存file的檔案路徑，使用Path.resolve這個功能去把路徑轉成絕對路徑
+location = str(Path.resolve(file))
+if file_location == location:
+    continue
+#Path的功能rglob去遍歷那個路徑的某一檔案，遍歷什麼檔案用（）內指定
+        """
+directory.execute("SELECT Path_location,Oldhash FROM WatchDog")
+# select Path and Old hash
+# after select Path and Old hash,storage database values as dict,then two dict should be comparable
+Old_hash = {row["Path_location"]: row["Oldhash"] for row in directory.fetchall()}
 
-if not Deleted_key:
+
+
+# 兩者都一樣的話
+common_keys = New_hash.keys() & Old_hash.keys()
+for path in common_keys:
+    compare1 = New_hash[path]
+    compare2 = Old_hash[path]
+
+    if compare1 == compare2:
+        continue
+    else:
+        print(f"{path} has changed")
+        directory.execute(
+        "UPDATE WatchDog SET Oldhash = ? WHERE Path_location = ?", (New_hash[path],path)
+        )
+
+
+# 兩者有一個不一樣的話
+added_keys = New_hash.keys() - Old_hash.keys()
+for path in added_keys:
+    directory.execute("INSERT INTO WatchDog(Path_location,Oldhash) VALUES (?,?)", (path, New_hash[path]))
+    print(f"Found new file{[path]} that wasn't exist before.(Add to Database)")
+
+
+# 刪除
+deleted_keys = Old_hash.keys() - New_hash.keys()
+if not deleted_keys:
     print("No file got Deleted")
 else:
-    print("file has been Deleted")
-            #這邊要是deleted的判斷，既然路徑存不存在舊hash的判斷已經在上面，那只能另開刪除的判斷
-            # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
-            # if  str(file) not in New_hash: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
-            #     print(f"The file has been Deleted")
-
-    database.close()
+    for path in deleted_keys:
+        print(f"file {path} has been Deleted")
+        directory.execute(
+            "DELETE FROM WatchDog WHERE Path_location = ?",
+            (path,)
+        )
+                #這邊要是deleted的判斷，既然路徑存不存在舊hash的判斷已經在上面，那只能另開刪除的判斷
+                # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
+                # if  str(file) not in New_hash: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
+                #     print(f"The file has been Deleted")
+database.commit()
+database.close()
 # 以下暫時不會用到
 # with open('data list.txt','rb') as f:
 #     content = f.readlines()
