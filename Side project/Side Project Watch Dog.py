@@ -5,6 +5,7 @@ import sqlite3
 # import Path and hashlib to connect and give sha256 value
 file_location = Path(r"C:\Python\Python\Side project")
 database_path = Path("WatchDog.db").resolve()
+# 使用resolve轉換成絕對路徑
 database = sqlite3.connect(database_path)
 # 建立檔案並連接至資料庫
 directory = database.cursor()
@@ -19,6 +20,53 @@ directory.execute(
     )
 """
 )
+directory.execute(
+    """
+    CREATE TABLE IF NOT EXISTS Baseline_exists (
+    id INTEGER PRIMARY KEY CHECK(id = 1),
+    Baseline_state INTEGER NOT NULL CHECK(Baseline_state IN (0, 1))
+    )
+"""
+)
+directory.execute(
+    "INSERT OR IGNORE INTO Baseline_exists (id, Baseline_state) VALUES (?, ?)",
+    (1, 0)
+)
+"""
+!GPT說明!
+這句可以直接理解成：
+
+嘗試 INSERT：
+id = 1
+Baseline_state = 0
+
+如果成功
+→ 第一次啟動，建立初始狀態
+
+如果 id = 1 已經存在
+→ 因為 PRIMARY KEY 衝突
+→ IGNORE
+→ 完全不修改原本資料
+"""
+# CHECK(id = 1)
+# → id 只允許等於 1
+# CHECK(Baseline_state IN (0, 1))
+# → 狀態只會有0或1
+
+""" SQLITE3 筆記
+id
+→ 欄位名稱
+
+INTEGER
+→ 整數
+
+PRIMARY KEY
+→ 這一列的唯一識別碼
+
+AUTOINCREMENT
+→ 新增 row 時，SQLite 自動幫 id 往上加
+"""
+
 
 """
 Issue：How to determine whether baseline has been initialized 
@@ -33,17 +81,25 @@ Update：Using fetchone tool return VALUES to determine already build baseline o
 
 Update2：fetchone 無法判斷空資料中新增的檔案是否是本來就有還是惡意放出，需用其他方式
 
+Solution：
+使用獨立的 Baseline_exists table 保存初始化狀態。
+
+Baseline_state = 0
+→ 尚未初始化
+
+Baseline_state = 1
+→ 已初始化，即使 WatchDog table 為 0 rows 也成立
 """
 directory.row_factory = sqlite3.Row
 # core setting to control what data will return by database(sqlite3)
-directory.execute("SELECT Oldhash FROM WatchDog")
+directory.execute("SELECT  Baseline_state FROM Baseline_exists")
 # select Old hash and use by baseline,so baseline use fetchone tool to check data are None or not
 baseline = directory.fetchone()
 # determine baseline is None or not
 New_hash = {}
 # add a dict that current status could add into
 
-if baseline is None:
+if baseline["Baseline_state"] == 0:
     # add baseline
     for file in file_location.rglob("*"):
         if file.resolve() == database_path: # 為什麼還要再寫一次在原本的呢?因為尚未建立新DB時，也有可能把自己寫進baseline，第二次才排除變成刪除
@@ -60,7 +116,13 @@ if baseline is None:
         directory.execute("INSERT INTO WatchDog(Oldhash, Path_location) VALUES (?,?)", (hash_num, str(file)))
         # 建立第一批資料baseline
         print("beseline are now created")
-        database.commit()
+
+    directory.execute(
+        "UPDATE Baseline_exists SET Baseline_state = ? WHERE id = ?",
+        (1, 1)
+    )
+    database.commit()
+    database.close()
 else:
     # if baseline already EXISTS,then rglob all the file again to compare the hash_num has change or not
     for file in file_location.rglob("*"):
@@ -122,64 +184,60 @@ else:
         #     add Not Null for database to make sure None value are truly null
         #     -Solved
         #     """
-"""
-錯誤示範：
-      
-# 用resolve功能判定絕對路徑，如果這個路徑跟database存著的Watch dog db相同
-# 那就中斷這一次的資料輸入，進入下一個循環
-# 用location儲存file的檔案路徑，使用Path.resolve這個功能去把路徑轉成絕對路徑
-location = str(Path.resolve(file))
-if file_location == location:
-    continue
-#Path的功能rglob去遍歷那個路徑的某一檔案，遍歷什麼檔案用（）內指定
-        """
-directory.execute("SELECT Path_location,Oldhash FROM WatchDog")
-# select Path and Old hash
-# after select Path and Old hash,storage database values as dict,then two dict should be comparable
-Old_hash = {row["Path_location"]: row["Oldhash"] for row in directory.fetchall()}
+    """
+    錯誤示範：
 
-
-
-# 兩者都一樣的話
-common_keys = New_hash.keys() & Old_hash.keys()
-for path in common_keys:
-    compare1 = New_hash[path]
-    compare2 = Old_hash[path]
-
-    if compare1 == compare2:
+    # 用resolve功能判定絕對路徑，如果這個路徑跟database存著的Watch dog db相同
+    # 那就中斷這一次的資料輸入，進入下一個循環
+    # 用location儲存file的檔案路徑，使用Path.resolve這個功能去把路徑轉成絕對路徑
+    location = str(Path.resolve(file))
+    if file_location == location:
         continue
+    #Path的功能rglob去遍歷那個路徑的某一檔案，遍歷什麼檔案用（）內指定
+            """
+    directory.execute("SELECT Path_location,Oldhash FROM WatchDog")
+    # select Path and Old hash
+    # after select Path and Old hash,storage database values as dict,then two dict should be comparable
+    Old_hash = {row["Path_location"]: row["Oldhash"] for row in directory.fetchall()}
+
+    # 兩者都一樣的話
+    common_keys = New_hash.keys() & Old_hash.keys()
+    for path in common_keys:
+        compare1 = New_hash[path]
+        compare2 = Old_hash[path]
+
+        if compare1 == compare2:
+            continue
+        else:
+            print(f"{path} has changed")
+            directory.execute(
+                "UPDATE WatchDog SET Oldhash = ? WHERE Path_location = ?", (New_hash[path], path)
+            )
+
+    # 兩者有一個不一樣的話
+    added_keys = New_hash.keys() - Old_hash.keys()
+    for path in added_keys:
+        directory.execute("INSERT INTO WatchDog(Path_location,Oldhash) VALUES (?,?)", (path, New_hash[path]))
+        print(f"Found new file{path} that wasn't exist before.(Add to Database)")
+
+    # 刪除
+    deleted_keys = Old_hash.keys() - New_hash.keys()
+    if not deleted_keys:
+        print("No file got Deleted")
     else:
-        print(f"{path} has changed")
-        directory.execute(
-        "UPDATE WatchDog SET Oldhash = ? WHERE Path_location = ?", (New_hash[path],path)
-        )
-
-
-# 兩者有一個不一樣的話
-added_keys = New_hash.keys() - Old_hash.keys()
-for path in added_keys:
-    directory.execute("INSERT INTO WatchDog(Path_location,Oldhash) VALUES (?,?)", (path, New_hash[path]))
-    print(f"Found new file{[path]} that wasn't exist before.(Add to Database)")
-
-
-# 刪除
-deleted_keys = Old_hash.keys() - New_hash.keys()
-if not deleted_keys:
-    print("No file got Deleted")
-else:
-    for path in deleted_keys:
-        print(f"file {path} has been Deleted")
-        directory.execute(
-            "DELETE FROM WatchDog WHERE Path_location = ?",
-            (path,)
-        )
-                #這邊要是deleted的判斷，既然路徑存不存在舊hash的判斷已經在上面，那只能另開刪除的判斷
-                # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
-                # if  str(file) not in New_hash: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
-                #     print(f"The file has been Deleted")
-database.commit()
-database.close()
-# 以下暫時不會用到
-# with open('data list.txt','rb') as f:
-#     content = f.readlines()
-#     directory.execute("INSERT INTO WatchDog (New hash) VALUES (hash_num, '{}')".format(hash_num))
+        for path in deleted_keys:
+            print(f"file {path} has been Deleted")
+            directory.execute(
+                "DELETE FROM WatchDog WHERE Path_location = ?",
+                (path,)
+            )
+            # 這邊要是deleted的判斷，既然路徑存不存在舊hash的判斷已經在上面，那只能另開刪除的判斷
+            # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
+            # if  str(file) not in New_hash: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
+            #     print(f"The file has been Deleted")
+    database.commit()
+    database.close()
+    # 以下暫時不會用到
+    # with open('data list.txt','rb') as f:
+    #     content = f.readlines()
+    #     directory.execute("INSERT INTO WatchDog (New hash) VALUES (hash_num, '{}')".format(hash_num))
