@@ -1,0 +1,18 @@
+
+Python 機密資料隱藏步驟清單
+
+1. 安裝套件：在終端機執行 pip install python-dotenv。
+2. 建立機密檔：在專案根目錄建立 .env 檔案，將 API 和密碼以 名稱=數值 的形式寫入。
+3. 設定忽略清單：在 .gitignore 檔案中加入 .env，防止它被推上 GitHub。
+4. 程式碼載入：在 Python 程式開頭 import 套件，並執行 load_dotenv()。
+5. 讀取與使用：使用 os.getenv("變數名稱") 取得金鑰，並直接帶入你的程式功能中。
+6. 提供範本（選填）：建立 .env.example 檔案留空欄位，方便其他人對照設定。
+
+給團隊協作者的貼心提示：
+因為 .env 被隔離了，別人在下載你的 GitHub 專案時會不知道要設定哪些變數。建議在專案中附帶一個 .env.example 檔案（這個檔案可以推上 GitHub），裡面不寫真的密碼，只留欄位名稱：
+text
+# .env.example 檔案內容
+API_KEY=請在此輸入你的API金鑰
+URL_PASSWORD=請在此輸入網址密碼
+請謹慎使用程式碼。
+這樣其他人只要複製該檔案並改名為 .env，就能無縫接軌執行你的 Python 程式了。

@@ -3,6 +3,22 @@ from pathlib import Path
 import sqlite3
 # Phase 1
 # import Path and hashlib to connect and give sha256 value
+
+import requests
+import json
+# P3階段，連接discord的webhook，只需要使用REQUEST跟JSON
+
+import os
+from dotenv import load_dotenv
+# 這兩個是為了載入.gitignore，去忽視金鑰而改為讀取環境代碼
+# 1. 載入 .env 檔案中的環境變數
+load_dotenv()
+# 2. 讀取特定變數
+url_password = os.getenv("DC_URL")
+# 在程式中使用變數（例如組合網址）
+# target_url = f"https://example.com{url_password}"
+# 但我先抱持懷疑態度先用一般變數形式
+
 file_location = Path(r"C:\Python\Python\Side project")
 database_path = Path("WatchDog.db").resolve()
 # 使用resolve轉換成絕對路徑
@@ -237,7 +253,6 @@ else:
             #     print(f"The file has been Deleted")
     database.commit()
     database.close()
-    # 以下暫時不會用到
-    # with open('data list.txt','rb') as f:
-    #     content = f.readlines()
-    #     directory.execute("INSERT INTO WatchDog (New hash) VALUES (hash_num, '{}')".format(hash_num))
+webhook_url = url_password
+data = {"content":
+}

@@ -1,0 +1,122 @@
+id
+→ Webhook 自己的 ID
+
+type
+→ Webhook 類型
+→ Incoming Webhook = 1
+
+guild_id
+→ 它屬於哪個 Discord server
+
+channel_id
+→ 它會往哪個 channel 發送
+
+name
+→ Webhook 預設名稱
+
+avatar
+→ Webhook 預設頭像
+
+token
+→ 執行這個 Webhook 的安全 token
+
+application_id
+→ 如果是由某個 application 建立，會記 application
+
+user
+→ 建立 Webhook 的 Discord user
+  （用 token 取得 webhook 時不一定回傳）
+
+
+wait 是什麼？
+這個你 P3 很值得理解。
+
+Execute Webhook 有：
+wait=false
+
+預設就是 false。
+
+意思大致是：
+「Discord，你收到就處理，我不需要你把建立好的 Message 回傳給我。」
+
+成功時通常得到：
+204 No Content
+
+也就是：
+成功了，但 response body 沒東西。
+
+如果改成：
+wait=true
+
+則變成：
+「Discord，等你確認 message 建立完，再把結果回給我。」
+
+成功後會得到一個 Message object。Documentation - Discord
+
+所以開發階段我建議：
+wait=true
+
+比較容易 debug。
+
+等 WatchDog 穩定了，再考慮需不需要改回 false。
+
+還有一個值得注意的官方細節：`wait=false` 時，如果訊息最後沒有被保存，Discord 不一定會把它當成錯誤回給你；這也是為什麼測試階段 wait=true 更可靠。
+
+5. 回傳值到底會是什麼？
+你可以先分成三類理解。
+A. 成功，而且 wait=false
+通常：
+HTTP 204 No Content
+
+意思：
+Request 成功，但沒有 response body。
+
+所以如果 Python：
+response.status_code
+
+你會看到類似：
+204
+
+但：
+response.json()
+
+這時沒 JSON 可以解析。
+B. 成功，而且 wait=true
+Discord 會回：
+HTTP success
++
+Message Object
+
+概念上可能包含：
+message id
+content
+channel id
+author
+timestamp
+embeds
+attachments
+...
+
+所以你可以確認：
+Discord 實際建立了什麼訊息。
+
+官方明確規定 Execute Webhook 會依 wait 回傳「message」或 204 No Content。Documentation - Discord
+C. Request 有問題
+例如：
+JSON 格式不合規
+content 太長
+缺少必要 message content
+Webhook URL/token 無效
+Discord rate limit
+network timeout
+
+那就會得到非成功 HTTP response，或在 Python requests 層直接丟 network exception。
+
+所以你之後 error handling 可以分成兩層：
+requests 層
+→ 我有沒有成功連到 Discord？
+
+Discord HTTP 層
+→ Discord 接到後，有沒有接受這個 request？
+
+這跟你以前做 API 專案應該會很像。
