@@ -253,6 +253,7 @@ else:
             #     print(f"The file has been Deleted")
     database.commit()
     database.close()
+
 webhook_url = url_password
-data = {"content":
-}
+webhook_respone = requests.get(webhook_url)
+data = {"content":webhook_respone.content}
