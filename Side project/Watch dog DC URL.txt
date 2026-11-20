@@ -1,1 +1,0 @@
-DC_URL=https://discord.com/api/webhooks/1569631675409760297/Ij0qFBDXkU5Vo32kOXQtvdu6FU-XhzTJElrRxcuFu9VkbkP4YTXy5xGWhcWTec8Z4PU9

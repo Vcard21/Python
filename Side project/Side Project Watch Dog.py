@@ -3,23 +3,35 @@ from pathlib import Path
 import sqlite3
 # Phase 1
 # import Path and hashlib to connect and give sha256 value
-
+import sys
 import requests
 import json
 # P3階段，連接discord的webhook，只需要使用REQUEST跟JSON
 
 import os
 from dotenv import load_dotenv
+# from dotenv import dotenv_values 為了看dotenv裡面到底讀到什麼的debug用
 # 這兩個是為了載入.gitignore，去忽視金鑰而改為讀取環境代碼
 # 1. 載入 .env 檔案中的環境變數
-load_dotenv()
+env_path =Path(r"C:\programme\Python\Python\Side project\Watchdog_DC_URL.env")
+load_env = load_dotenv(dotenv_path=env_path)
 # 2. 讀取特定變數
-url_password = os.getenv("DC_URL")
+url_password = os.getenv("Watchdog_DC_URL")
 # 在程式中使用變數（例如組合網址）
 # target_url = f"https://example.com{url_password}"
 # 但我先抱持懷疑態度先用一般變數形式
-
-file_location = Path(r"C:\Python\Python\Side project")
+""" 
+以下AI代碼debug
+for item in Path(r"C:\programme\Python\Python\Side project").iterdir(): <這是為了看資料夾中有那些東西的迴圈
+     print(item.name)
+ print(os.getcwd()) <用來取得目前目錄的完整路徑字串
+ print("env exists:", env_path.exists()) <確認.env檔案是否存在
+ print("dotenv loaded:", load_env) <確定是不是有讀取到內容
+ print("url:", repr(os.getenv("WATCHDOG_DC_URL"))) <把存放在這個.env檔案的內容放出來
+ 
+ !! bug !! 解說，單純我以為.env會自己找env類型的檔案，結果原來.env就是一整個檔+副檔名，所以Watchdog_DC_URL.env才找不到
+"""
+file_location = Path(r"C:\programme\Python\Python\Side project")
 database_path = Path("WatchDog.db").resolve()
 # 使用resolve轉換成絕對路徑
 database = sqlite3.connect(database_path)
@@ -114,6 +126,9 @@ baseline = directory.fetchone()
 # determine baseline is None or not
 New_hash = {}
 # add a dict that current status could add into
+
+events = []
+# P3 傳一次訊息會讓dc一直不斷傳，所以用一個清單儲存，一次傳送
 
 if baseline["Baseline_state"] == 0:
     # add baseline
@@ -229,17 +244,18 @@ else:
             directory.execute(
                 "UPDATE WatchDog SET Oldhash = ? WHERE Path_location = ?", (New_hash[path], path)
             )
+            events.append("\n"f"{path} has changed")
 
     # 兩者有一個不一樣的話
     added_keys = New_hash.keys() - Old_hash.keys()
     for path in added_keys:
         directory.execute("INSERT INTO WatchDog(Path_location,Oldhash) VALUES (?,?)", (path, New_hash[path]))
         print(f"Found new file{path} that wasn't exist before.(Add to Database)")
-
+        events.append("\n"f"Found new file{path} that wasn't exist before.(Add to Database)")
     # 刪除
     deleted_keys = Old_hash.keys() - New_hash.keys()
     if not deleted_keys:
-        print("No file got Deleted")
+        print("No file deleted")
     else:
         for path in deleted_keys:
             print(f"file {path} has been Deleted")
@@ -247,13 +263,19 @@ else:
                 "DELETE FROM WatchDog WHERE Path_location = ?",
                 (path,)
             )
+            events.append("\n"f"Old {path} has been Deleted")
             # 這邊要是deleted的判斷，既然路徑存不存在舊hash的判斷已經在上面，那只能另開刪除的判斷
             # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
             # if  str(file) not in New_hash: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
             #     print(f"The file has been Deleted")
     database.commit()
     database.close()
-
 webhook_url = url_password
-webhook_respone = requests.get(webhook_url)
-data = {"content":webhook_respone.content}
+if events:
+    data = {"username":"WatchDog Notice",
+            "content":"\n".join(events)} # 反斜槓讓內容分行
+    # join方法讓list或tuple中的字串元素可以合併成一個新字串(str)
+    webhook_respone = requests.post(webhook_url, json=data)
+else:
+    sys.exit()
+# import sys的exit工具直接結束程式。

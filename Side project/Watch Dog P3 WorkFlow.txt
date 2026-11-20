@@ -1,0 +1,32 @@
+events = []
+
+掃描 / compare
+
+MODIFIED
+→ events 加一條訊息
+
+ADDED
+→ events 加一條訊息
+
+DELETED
+→ events 加一條訊息
+
+UNCHANGED
+→ 不加入 events
+
+掃描結束
+↓
+events 有內容？
+├─ NO → 不 POST
+└─ YES
+    ↓
+    組成 content
+    ↓
+    payload = {
+        username: "WatchDog Notice",
+        content: ...
+    }
+    ↓
+    POST(url, json=payload)
+
+以上AI示意
