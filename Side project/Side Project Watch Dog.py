@@ -5,7 +5,6 @@ import sqlite3
 # import Path and hashlib to connect and give sha256 value
 import sys
 import requests
-import json
 # P3階段，連接discord的webhook，只需要使用REQUEST跟JSON
 
 import os
@@ -14,15 +13,25 @@ from dotenv import load_dotenv
 # 這兩個是為了載入.gitignore，去忽視金鑰而改為讀取環境代碼
 # 1. 載入 .env 檔案中的環境變數
 env_path =Path(r"C:\programme\Python\Python\Side project\Watchdog_DC_URL.env")
+if not env_path.is_file():
+    # if not env_path改成>env_path.is_file，去確認是否真的是檔案，也可以用exists()確認是否存在
+    # 就算實際檔案不存在，path物件本身存在，所以會被當成true
+    sys.exit("Watchdog_DC_URL.env not found")
+# 錯誤處理1，沒找到.env檔案直接結束。
 load_env = load_dotenv(dotenv_path=env_path)
+if not load_env:
+    sys.exit("dotenv process can't load")
+# 錯誤處理2.，沒讀取到.env檔案直接結束。
 # 2. 讀取特定變數
 url_password = os.getenv("Watchdog_DC_URL")
+if not url_password:
+    sys.exit("Watchdog_DC_URL is missing or empty") # AI建議修改，因為不一定代表env檔案沒讀到，而可能是裡面的key不存在、拚錯、或值是空的
 # 在程式中使用變數（例如組合網址）
 # target_url = f"https://example.com{url_password}"
 # 但我先抱持懷疑態度先用一般變數形式
 """ 
 以下AI代碼debug
-for item in Path(r"C:\programme\Python\Python\Side project").iterdir(): <這是為了看資料夾中有那些東西的迴圈
+for item in Path(r"路徑").iterdir(): <這是為了看資料夾中有那些東西的迴圈
      print(item.name)
  print(os.getcwd()) <用來取得目前目錄的完整路徑字串
  print("env exists:", env_path.exists()) <確認.env檔案是否存在
@@ -244,14 +253,14 @@ else:
             directory.execute(
                 "UPDATE WatchDog SET Oldhash = ? WHERE Path_location = ?", (New_hash[path], path)
             )
-            events.append("\n"f"{path} has changed")
+            events.append(f"{path} has changed")
 
     # 兩者有一個不一樣的話
     added_keys = New_hash.keys() - Old_hash.keys()
     for path in added_keys:
         directory.execute("INSERT INTO WatchDog(Path_location,Oldhash) VALUES (?,?)", (path, New_hash[path]))
         print(f"Found new file{path} that wasn't exist before.(Add to Database)")
-        events.append("\n"f"Found new file{path} that wasn't exist before.(Add to Database)")
+        events.append(f"Found new file{path} that wasn't exist before.(Add to Database)")
     # 刪除
     deleted_keys = Old_hash.keys() - New_hash.keys()
     if not deleted_keys:
@@ -263,7 +272,7 @@ else:
                 "DELETE FROM WatchDog WHERE Path_location = ?",
                 (path,)
             )
-            events.append("\n"f"Old {path} has been Deleted")
+            events.append(f"Old {path} has been Deleted")
             # 這邊要是deleted的判斷，既然路徑存不存在舊hash的判斷已經在上面，那只能另開刪除的判斷
             # 這邊就已經代表是路徑不相符的時候，所以路徑不相符時的判斷就應該是【刪除、新增】
             # if  str(file) not in New_hash: # 這邊應該是刪除，想想看，刪除應該用什麼判斷?應該是原本有但現在沒有
@@ -271,11 +280,22 @@ else:
     database.commit()
     database.close()
 webhook_url = url_password
-if events:
-    data = {"username":"WatchDog Notice",
-            "content":"\n".join(events)} # 反斜槓讓內容分行
-    # join方法讓list或tuple中的字串元素可以合併成一個新字串(str)
-    webhook_respone = requests.post(webhook_url, json=data)
-else:
-    sys.exit()
-# import sys的exit工具直接結束程式。
+try:
+    if events:
+        data = {"username":"WatchDog Notice",
+                "content":"\n".join(events)} # 反斜槓讓內容分行，join()用它把多個事件字串以換行分隔後合併成一個str
+        # join方法讓list或tuple中的字串元素可以合併成一個新字串(str)
+        webhook_response = requests.post(webhook_url, json=data,timeout= 10)
+        webhook_response.raise_for_status()
+    else:
+        print("No events")
+        sys.exit()
+        # import sys的exit工具直接結束程式。
+except requests.exceptions.Timeout as e:
+    print(f"請求時間{e}逾時")
+except requests.exceptions.ConnectionError as e:
+    print(f"連線錯誤，代碼{e}")
+except requests.exceptions.RequestException as e:
+    print(f"不明錯誤，代碼：{e}")
+print("進程完成，結束")
+sys.exit()
